@@ -1,0 +1,62 @@
+import tkinter as tk
+from tkinter import messagebox
+
+def add_task():
+    task = task_entry.get()
+    if task != "":
+        tasks_listbox.insert(tk.END, task)
+        task_entry.delete(0, tk.END)
+    else:
+        messagebox.showwarning("Warning", "لطفاً یک تسک وارد کنید!")
+
+def mark_done():
+    try:
+        selected_index = tasks_listbox.curselection()[0]
+        task_text = tasks_listbox.get(selected_index)
+
+        if task_text.startswith("✔ "):
+            tasks_listbox.delete(selected_index)
+            tasks_listbox.insert(selected_index, task_text[2:])
+        else:
+            tasks_listbox.delete(selected_index)
+            tasks_listbox.insert(selected_index, "✔ " + task_text)
+    except IndexError:
+        messagebox.showwarning("Warning", "لطفاً یک تسک انتخاب کنید!")
+
+def delete_task():
+    try:
+        selected_index = tasks_listbox.curselection()[0]
+        tasks_listbox.delete(selected_index)
+    except IndexError:
+        messagebox.showwarning("Warning", "هیچ تسکی انتخاب نشده است!")
+
+def clear_all():
+    tasks_listbox.delete(0, tk.END)
+
+root = tk.Tk()
+root.title("To-Do List v1 - Basic")
+root.geometry("400x400")
+root.resizable(False, False)
+
+task_entry = tk.Entry(root, width=25, font=('Arial', 14))
+task_entry.pack(pady=10)
+
+add_button = tk.Button(root, text="Add Task", width=10, bg="green", fg="white", font=('Arial', 10, 'bold'), command=add_task)
+add_button.pack()
+
+tasks_listbox = tk.Listbox(root, width=50, height=10, selectmode=tk.SINGLE, font=('Arial', 12))
+tasks_listbox.pack(pady=10)
+
+frame = tk.Frame(root)
+frame.pack(pady=10)
+
+delete_button = tk.Button(frame, text="Delete Task", bg="red", fg="white", width=12, font=('Arial', 10, 'bold'), command=delete_task)
+delete_button.grid(row=0, column=0, padx=5)
+
+done_button = tk.Button(frame, text="Mark Done", bg="dodgerblue", fg="white", width=12, font=('Arial', 10, 'bold'), command=mark_done)
+done_button.grid(row=0, column=1, padx=5)
+
+clear_button = tk.Button(frame, text="Clear All", bg="purple", fg="white", width=12, font=('Arial', 10, 'bold'), command=clear_all)
+clear_button.grid(row=0, column=2, padx=5)
+
+root.mainloop()
