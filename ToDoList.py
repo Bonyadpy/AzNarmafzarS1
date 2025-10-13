@@ -1,10 +1,14 @@
 import tkinter as tk
 from tkinter import messagebox
+from datetime import datetime
+
 
 def add_task():
     task = task_entry.get()
     if task != "":
-        tasks_listbox.insert(tk.END, task)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+        task_with_time = f"{task} - [{current_time}]"
+        tasks_listbox.insert(tk.END, task_with_time)
         task_entry.delete(0, tk.END)
     else:
         messagebox.showwarning("Warning", "لطفاً یک تسک وارد کنید!")
