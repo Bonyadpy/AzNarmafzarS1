@@ -13,7 +13,7 @@ def add_task():
     else:
         messagebox.showwarning("Warning", "لطفاً یک تسک وارد کنید!")
 
-def mark_done():
+def mark_done(): 
     try:
         selected_index = tasks_listbox.curselection()[0]
         task_text = tasks_listbox.get(selected_index)
