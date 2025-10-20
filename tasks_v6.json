@@ -1,0 +1,42 @@
+[
+  {
+    "id": "8f6f8ae5-f05e-44a0-b7aa-5978eda1c5c5",
+    "text": "task1",
+    "priority": "Low",
+    "category": "General",
+    "done": false,
+    "created": "2025-10-19 18:30:52"
+  },
+  {
+    "id": "97a9cbde-f1d2-4f07-9c65-af2b34352481",
+    "text": "task2",
+    "priority": "Medium",
+    "category": "Work",
+    "done": false,
+    "created": "2025-10-19 18:31:00"
+  },
+  {
+    "id": "d0b4f2f6-34e5-4c58-83d6-44d7d371d7a7",
+    "text": "task3",
+    "priority": "High",
+    "category": "Study",
+    "done": false,
+    "created": "2025-10-19 18:31:11"
+  },
+  {
+    "id": "340aeb1c-47ea-4a0d-9c5f-15cbdd353607",
+    "text": "task4",
+    "priority": "High",
+    "category": "Personal",
+    "done": true,
+    "created": "2025-10-19 18:31:20"
+  },
+  {
+    "id": "bf8cb6e9-652e-44b2-bb47-4fc23d27fbf6",
+    "text": "task5",
+    "priority": "Urgent",
+    "category": "Health",
+    "done": true,
+    "created": "2025-10-19 18:39:07"
+  }
+]

@@ -2,136 +2,125 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json, os, datetime, uuid
 
-# ----- constants -----
 DATA_FILE = "tasks_v6.json"
 CATEGORIES = ["General", "Work", "Study", "Home", "Shopping", "Personal", "Health"]
 
 class TodoApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🚀 Advanced To-Do List v6 (Final)")
-        self.root.geometry("700x700")
-        self.root.configure(bg='#f8f9fa')
+        self.root.title("🚀 Advanced To-Do List v6 (Modern UI)")
+        self.root.geometry("850x720")
+        self.root.configure(bg='#edf2f7')
 
-        self.metas = {}   # mapping tree item id -> serialized task
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("Treeview", font=('Segoe UI', 10), rowheight=26, background="#ffffff", fieldbackground="#ffffff")
+        style.configure("Treeview.Heading", font=('Segoe UI Semibold', 10), background="#2c3e50", foreground="white")
+        style.map("Treeview", background=[('selected', '#cce5ff')])
+
+        self.metas = {}
+        self.fullscreen = False
         self.setup_ui()
-        self.load_tasks()  # call the loader properly
+        self.load_tasks()
 
+        self.root.bind("<Escape>", lambda e: self.set_fullscreen(False))
         self.root.mainloop()
 
     def setup_ui(self):
         # Header
-        header_frame = tk.Frame(self.root, bg='#2c3e50', height=70)
-        header_frame.pack(fill='x', padx=12, pady=12)
-        header_frame.pack_propagate(False)
-        tk.Label(header_frame, text="🚀 Advanced Task Manager",
-                 font=('Arial', 18, 'bold'),
-                 bg='#2c3e50', fg='white').pack(pady=12)
+        header = tk.Frame(self.root, bg='#2c3e50', height=70)
+        header.pack(fill='x')
+        header.pack_propagate(False)
+        tk.Label(header, text="🚀 Advanced Task Manager",
+                 font=('Segoe UI Semibold', 20),
+                 bg='#2c3e50', fg='white').pack(pady=14)
 
-        # Search & Filters
-        search_frame = tk.Frame(self.root, bg='#f8f9fa')
-        search_frame.pack(fill='x', padx=20, pady=(0,10))
+        # Search + Filters
+        top_frame = tk.Frame(self.root, bg='#edf2f7')
+        top_frame.pack(fill='x', padx=20, pady=(10, 0))
 
-        tk.Label(search_frame, text="🔍 Search:",
-                 font=('Arial', 10, 'bold'), bg='#f8f9fa').grid(row=0, column=0, sticky='w')
+        # Search
+        tk.Label(top_frame, text="🔍 Search:", bg='#edf2f7', font=('Segoe UI', 10, 'bold')).grid(row=0, column=0, sticky='w')
         self.search_var = tk.StringVar()
-        self.search_entry = tk.Entry(search_frame, textvariable=self.search_var,
-                                    font=('Arial', 10), width=28, bd=1, relief='solid')
-        self.search_entry.grid(row=0, column=1, padx=6)
-        self.search_entry.bind('<KeyRelease>', self.filter_tasks)
+        search_entry = ttk.Entry(top_frame, textvariable=self.search_var, width=30)
+        search_entry.grid(row=0, column=1, padx=5)
+        search_entry.bind("<KeyRelease>", self.filter_tasks)
 
-        # Status filter (All / Pending / Completed)
-        tk.Label(search_frame, text="Status:",
-                 font=('Arial', 10, 'bold'), bg='#f8f9fa').grid(row=0, column=2, padx=(12,4))
+        # Status filter
+        tk.Label(top_frame, text="Status:", bg='#edf2f7', font=('Segoe UI', 10, 'bold')).grid(row=0, column=2, padx=(15,5))
         self.filter_var = tk.StringVar(value="All")
-        status_combo = ttk.Combobox(search_frame, textvariable=self.filter_var,
-                                    values=["All", "Pending", "Completed"], state="readonly", width=12)
+        status_combo = ttk.Combobox(top_frame, textvariable=self.filter_var, values=["All","Pending","Completed"], state="readonly", width=12)
         status_combo.grid(row=0, column=3)
-        status_combo.bind('<<ComboboxSelected>>', self.filter_tasks)
+        status_combo.bind("<<ComboboxSelected>>", self.filter_tasks)
 
         # Category filter
-        tk.Label(search_frame, text="Category:",
-                 font=('Arial', 10, 'bold'), bg='#f8f9fa').grid(row=0, column=4, padx=(12,4))
+        tk.Label(top_frame, text="Category:", bg='#edf2f7', font=('Segoe UI', 10, 'bold')).grid(row=0, column=4, padx=(15,5))
         self.category_filter_var = tk.StringVar(value="All")
-        category_combo = ttk.Combobox(search_frame, textvariable=self.category_filter_var,
-                                      values=["All"] + CATEGORIES, state="readonly", width=14)
-        category_combo.grid(row=0, column=5)
-        category_combo.bind('<<ComboboxSelected>>', self.filter_tasks)
+        cat_combo = ttk.Combobox(top_frame, textvariable=self.category_filter_var, values=["All"]+CATEGORIES, state="readonly", width=14)
+        cat_combo.grid(row=0, column=5)
+        cat_combo.bind("<<ComboboxSelected>>", self.filter_tasks)
 
-        # Add Task area
-        add_frame = tk.Frame(self.root, bg='#f8f9fa')
-        add_frame.pack(fill='x', padx=20, pady=(0,8))
+        # Divider
+        ttk.Separator(self.root, orient='horizontal').pack(fill='x', padx=20, pady=10)
 
-        tk.Label(add_frame, text="📝 Task:", bg='#f8f9fa').grid(row=0, column=0, sticky='w')
-        self.entry_text = tk.Entry(add_frame, width=40)
-        self.entry_text.grid(row=0, column=1, padx=6)
+        # Add Task Section
+        add_frame = tk.LabelFrame(self.root, text="➕ Add New Task", bg='#edf2f7', font=('Segoe UI', 10, 'bold'))
+        add_frame.pack(fill='x', padx=20, pady=(0,10))
 
-        tk.Label(add_frame, text="Priority:", bg='#f8f9fa').grid(row=0, column=2, padx=(10,4))
-        self.priority_var = tk.StringVar(value="Medium")
-        priorities = ["Low", "Medium", "High", "Urgent"]
-        priority_combo = ttk.Combobox(add_frame, textvariable=self.priority_var,
-                                      values=priorities, state="readonly", width=10)
-        priority_combo.grid(row=0, column=3)
+        tk.Label(add_frame, text="Task:", bg='#edf2f7', font=('Segoe UI', 10)).grid(row=0, column=0, sticky='w', padx=5, pady=5)
+        self.entry_text = ttk.Entry(add_frame, width=45)
+        self.entry_text.grid(row=0, column=1, padx=5, pady=5)
 
-        tk.Label(add_frame, text="Category:", bg='#f8f9fa').grid(row=0, column=4, padx=(10,4))
+        tk.Label(add_frame, text="Category:", bg='#edf2f7', font=('Segoe UI', 10)).grid(row=0, column=2, padx=(15,5))
         self.category_var = tk.StringVar(value="General")
-        category_add_combo = ttk.Combobox(add_frame, textvariable=self.category_var,
-                                          values=CATEGORIES, state="readonly", width=12)
-        category_add_combo.grid(row=0, column=5, padx=(0,6))
+        cat_add = ttk.Combobox(add_frame, textvariable=self.category_var, values=CATEGORIES, state="readonly", width=14)
+        cat_add.grid(row=0, column=3, pady=5)
 
-        tk.Button(add_frame, text="➕ Add Task", command=self.add_task).grid(row=0, column=6, padx=(6,0))
+        tk.Label(add_frame, text="Priority:", bg='#edf2f7', font=('Segoe UI', 10)).grid(row=0, column=4, padx=(15,5))
+        self.priority_var = tk.StringVar(value="Medium")
+        pri_add = ttk.Combobox(add_frame, textvariable=self.priority_var, values=["Low","Medium","High","Urgent"], state="readonly", width=10)
+        pri_add.grid(row=0, column=5, pady=5)
 
-        # List frame with Treeview
-        list_frame = tk.Frame(self.root, bg='#f8f9fa')
-        list_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        ttk.Button(add_frame, text="Add Task", command=self.add_task).grid(row=0, column=6, padx=(20,0))
 
-        self.tree = ttk.Treeview(list_frame,
-                                 columns=('Status', 'Priority', 'Category', 'Task', 'Time'),
-                                 show='headings', height=18)
-        # headings
-        self.tree.heading('Status', text='📊 Status')
-        self.tree.heading('Priority', text='🎯 Priority')
-        self.tree.heading('Category', text='📁 Category')
-        self.tree.heading('Task', text='📝 Task')
-        self.tree.heading('Time', text='⏰ Created')
-        # columns config
-        self.tree.column('Status', width=80, anchor='center')
-        self.tree.column('Priority', width=100, anchor='center')
-        self.tree.column('Category', width=100, anchor='center')
-        self.tree.column('Task', width=320, anchor='w')
-        self.tree.column('Time', width=140, anchor='center')
+        # Task List
+        list_frame = tk.Frame(self.root, bg='#edf2f7')
+        list_frame.pack(fill='both', expand=True, padx=20, pady=(0,10))
 
-        scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        columns = ('Status', 'Priority', 'Category', 'Task', 'Created')
+        self.tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=18)
+        for col, text in zip(columns, ['📊 Status', '🎯 Priority', '📁 Category', '📝 Task', '⏰ Created']):
+            self.tree.heading(col, text=text)
+        self.tree.column('Status', width=90, anchor='center')
+        self.tree.column('Priority', width=120, anchor='center')
+        self.tree.column('Category', width=120, anchor='center')
+        self.tree.column('Task', width=350, anchor='w')
+        self.tree.column('Created', width=150, anchor='center')
+
+        vsb = ttk.Scrollbar(list_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=vsb.set)
         self.tree.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
+        vsb.pack(side='right', fill='y')
 
-        # Bind double-click to toggle done
         self.tree.bind("<Double-1>", self.on_tree_double_click)
 
-        # Controls (mark done, delete, save, stats, fullscreen)
-        controls_frame = tk.Frame(self.root, bg='#f8f9fa')
-        controls_frame.pack(fill='x', padx=20, pady=(0,12))
+        # Bottom buttons
+        bottom = tk.Frame(self.root, bg='#edf2f7')
+        bottom.pack(fill='x', padx=20, pady=(0,10))
 
-        tk.Button(controls_frame, text="✅ Mark Done/Undone", command=self.toggle_done_selected).pack(side='left', padx=6)
-        tk.Button(controls_frame, text="🗑️ Delete", command=self.delete_selected).pack(side='left', padx=6)
-        tk.Button(controls_frame, text="💾 Save", command=self.save_tasks).pack(side='left', padx=6)
-        tk.Button(controls_frame, text="📊 Stats", command=self.show_stats).pack(side='left', padx=6)
-        tk.Button(controls_frame, text="⛶ Toggle Fullscreen", command=self.toggle_fullscreen).pack(side='right', padx=6)
+        btn_style = {'font':('Segoe UI', 9, 'bold'), 'padx':10, 'pady':4}
+        tk.Button(bottom, text="✅ Toggle Done", bg="#c8e6c9", relief='flat', command=self.toggle_done_selected, **btn_style).pack(side='left', padx=4)
+        tk.Button(bottom, text="✏️ Edit", bg="#ffe0b2", relief='flat', command=self.edit_selected, **btn_style).pack(side='left', padx=4)
+        tk.Button(bottom, text="🗑️ Delete", bg="#ffcdd2", relief='flat', command=self.delete_selected, **btn_style).pack(side='left', padx=4)
+        tk.Button(bottom, text="📊 Stats", bg="#d1c4e9", relief='flat', command=self.show_stats, **btn_style).pack(side='left', padx=4)
+        tk.Button(bottom, text="🔄 Refresh", bg="#bbdefb", relief='flat', command=self.load_tasks, **btn_style).pack(side='left', padx=4)
+        tk.Button(bottom, text="⛶ Fullscreen", bg="#b2dfdb", relief='flat', command=self.toggle_fullscreen, **btn_style).pack(side='right', padx=4)
 
-        # Stats label
-        self.stats_label = tk.Label(self.root, text="", bg='#f8f9fa', font=('Arial', 10))
-        self.stats_label.pack(fill='x', padx=20)
+        self.stats_label = tk.Label(self.root, text="", bg='#edf2f7', font=('Segoe UI', 10, 'bold'))
+        self.stats_label.pack(fill='x', pady=(0,8))
         self.update_stats()
 
-        # Tree tag configuration for filtering visuals
-        self.tree.tag_configure('hidden', foreground='gray')
-
-        # fullscreen state
-        self.fullscreen = False
-        self.root.bind("<Escape>", lambda e: self.set_fullscreen(False))
-
-    # ----------------- task operations -----------------
+    # === Functional methods (same as before) ===
     def add_task(self):
         text = self.entry_text.get().strip()
         if not text:
@@ -152,174 +141,95 @@ class TodoApp:
 
     def display_task(self, task):
         status = "✅" if task.get("done") else "⏰"
-        priority_emojis = {
-            "Low": "🟢 Low",
-            "Medium": "🟡 Medium",
-            "High": "🟠 High",
-            "Urgent": "🔴 Urgent"
-        }
-        priority_display = priority_emojis.get(task.get('priority', 'Medium'), task.get('priority', 'Medium'))
-        display_values = (
+        self.metas[self.tree.insert('', 'end', values=(
             status,
-            priority_display,
+            task.get('priority', 'Medium'),
             task.get('category', 'General'),
             task['text'],
             task['created']
-        )
-        item_id = self.tree.insert('', 'end', values=display_values)
-        # store full task as json string in metas
-        self.metas[item_id] = json.dumps(task)
+        ))] = json.dumps(task)
 
     def delete_selected(self):
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo("Info", "No task selected.")
             return
-        if messagebox.askyesno("Confirm", "Do you really want to delete the selected task(s)?"):
+        if messagebox.askyesno("Confirm", "Delete selected task(s)?"):
             for item in sel:
-                if item in self.metas:
-                    del self.metas[item]
-                try:
-                    self.tree.delete(item)
-                except Exception:
-                    pass
-            self.save_tasks()
-            self.update_stats()
+                if item in self.metas: del self.metas[item]
+                self.tree.delete(item)
+            self.save_tasks(); self.update_stats()
 
     def toggle_done_selected(self):
+        for item in self.tree.selection():
+            task = json.loads(self.metas[item])
+            task['done'] = not task.get('done', False)
+            vals = list(self.tree.item(item, 'values'))
+            vals[0] = "✅" if task['done'] else "⏰"
+            self.tree.item(item, values=vals)
+            self.metas[item] = json.dumps(task)
+        self.save_tasks(); self.update_stats()
+
+    def on_tree_double_click(self, e): self.toggle_done_selected()
+    def edit_selected(self):
         sel = self.tree.selection()
-        if not sel:
-            messagebox.showinfo("Info", "No task selected.")
-            return
-        for item in sel:
-            if item in self.metas:
-                task = json.loads(self.metas[item])
-                task['done'] = not task.get('done', False)
-                self.metas[item] = json.dumps(task)
-                # update display row
-                status = "✅" if task['done'] else "⏰"
-                # update tree values (Status is index 0)
-                vals = list(self.tree.item(item, 'values'))
-                vals[0] = status
-                self.tree.item(item, values=vals)
-        self.save_tasks()
-        self.update_stats()
+        if not sel: return
+        item = sel[0]
+        task = json.loads(self.metas[item])
+        new_text = tk.simpledialog.askstring("Edit Task", "Edit task text:", initialvalue=task['text'])
+        if new_text:
+            task['text'] = new_text
+            vals = list(self.tree.item(item, 'values'))
+            vals[3] = new_text
+            self.tree.item(item, values=vals)
+            self.metas[item] = json.dumps(task)
+            self.save_tasks()
 
-    def on_tree_double_click(self, event):
-        # toggle done on double click
-        item = self.tree.identify_row(event.y)
-        if item:
-            if item in self.metas:
-                task = json.loads(self.metas[item])
-                task['done'] = not task.get('done', False)
-                self.metas[item] = json.dumps(task)
-                vals = list(self.tree.item(item, 'values'))
-                vals[0] = "✅" if task['done'] else "⏰"
-                self.tree.item(item, values=vals)
-                self.save_tasks()
-                self.update_stats()
-
-    # ----------------- persistence -----------------
     def save_tasks(self):
-        try:
-            tasks = []
-            # iterate over metas to collect task dicts
-            for meta_json in self.metas.values():
-                tasks.append(json.loads(meta_json))
-            with open(DATA_FILE, "w", encoding="utf-8") as f:
-                json.dump(tasks, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save tasks: {e}")
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump([json.loads(m) for m in self.metas.values()], f, ensure_ascii=False, indent=2)
 
     def load_tasks(self):
-        # clear existing
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        for i in self.tree.get_children(): self.tree.delete(i)
         self.metas.clear()
-
-        if not os.path.exists(DATA_FILE):
-            return
-        try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                tasks = json.load(f)
-            for task in tasks:
-                # ensure created exists
-                if 'created' not in task:
-                    task['created'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                self.display_task(task)
-            self.update_stats()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load tasks: {e}")
-
-    # ----------------- filtering & stats -----------------
-    def filter_tasks(self, event=None):
-        """Filter tasks based on search text, status, and category"""
-        search_text = self.search_var.get().lower().strip()
-        status_filter = self.filter_var.get()
-        category_filter = self.category_filter_var.get()
-
-        for item in self.tree.get_children():
-            values = self.tree.item(item)['values']
-            task_text = values[3].lower() if len(values) > 3 else ""
-            category = values[2] if len(values) > 2 else ""
-            status = "Completed" if values[0] == "✅" else "Pending"
-
-            hide = False
-            if search_text and search_text not in task_text:
-                hide = True
-            if status_filter != "All" and status_filter != status:
-                hide = True
-            if category_filter != "All" and category_filter != category:
-                hide = True
-
-            if hide:
-                # add hidden tag
-                cur_tags = set(self.tree.item(item, 'tags'))
-                cur_tags.add('hidden')
-                self.tree.item(item, tags=tuple(cur_tags))
-            else:
-                # remove hidden tag
-                cur_tags = set(self.tree.item(item, 'tags'))
-                if 'hidden' in cur_tags:
-                    cur_tags.remove('hidden')
-                self.tree.item(item, tags=tuple(cur_tags))
+        if os.path.exists(DATA_FILE):
+            try:
+                with open(DATA_FILE, "r", encoding="utf-8") as f:
+                    for t in json.load(f): self.display_task(t)
+            except: pass
+        self.update_stats()
 
     def show_stats(self):
-        total = len(self.metas)
-        completed = sum(1 for meta in self.metas.values() if json.loads(meta).get('done', False))
-        pending = total - completed
-        # category stats
-        category_stats = {}
-        for meta in self.metas.values():
-            task_data = json.loads(meta)
-            cat = task_data.get('category', 'General')
-            category_stats[cat] = category_stats.get(cat, 0) + 1
-
-        stats_text = f"📊 Statistics:\n\n✅ Completed: {completed}\n⏰ Pending: {pending}\n📈 Total: {total}\n\n"
-        stats_text += "📁 Categories:\n" + "\n".join([f"- {k}: {v}" for k, v in category_stats.items()])
-        messagebox.showinfo("Detailed Statistics", stats_text)
+        total=len(self.metas)
+        done=sum(1 for m in self.metas.values() if json.loads(m).get('done',False))
+        pend=total-done
+        messagebox.showinfo("Stats", f"✅ Done: {done}\n⏰ Pending: {pend}\n📈 Total: {total}")
 
     def update_stats(self):
-        total = len(self.metas)
-        completed = sum(1 for meta in self.metas.values() if json.loads(meta).get('done', False))
-        pending = total - completed
-        stats_text = f"📊 Tasks: {completed} Completed | {pending} Pending | {total} Total"
-        self.stats_label.config(text=stats_text)
+        total=len(self.metas)
+        done=sum(1 for m in self.metas.values() if json.loads(m).get('done',False))
+        pend=total-done
+        self.stats_label.config(text=f"📊 Tasks → {done} Done | {pend} Pending | {total} Total")
 
-    # ----------------- fullscreen -----------------
+    def filter_tasks(self, e=None):
+        s=self.search_var.get().lower(); st=self.filter_var.get(); cat=self.category_filter_var.get()
+        for i in self.tree.get_children():
+            v=self.tree.item(i)['values']; hide=False
+            if s and s not in v[3].lower(): hide=True
+            if st!="All" and st!=("Completed" if v[0]=="✅" else "Pending"): hide=True
+            if cat!="All" and cat!=v[2]: hide=True
+            self.tree.detach(i) if hide else self.tree.reattach(i,'','end')
+
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
         self.set_fullscreen(self.fullscreen)
 
-    def set_fullscreen(self, flag: bool):
-        self.fullscreen = flag
+    def set_fullscreen(self, flag):
         self.root.attributes("-fullscreen", flag)
+        self.fullscreen = flag
 
 
 if __name__ == "__main__":
     TodoApp()
-
-
 
 
 # *********************************************************************************************************
